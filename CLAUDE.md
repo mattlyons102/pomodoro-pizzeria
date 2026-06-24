@@ -27,6 +27,15 @@ Prefer the preview tooling (`preview_start` with the `focus-web` config) over la
 
 There is no build step, no package manager, and no test suite.
 
+## Deployment
+
+The repo is on GitHub (`mattlyons102/pomodoro-pizzeria`, public) and deploys to
+Vercel as a static site. Because the app lives in `focus-web/` rather than the
+repo root, the root `vercel.json` rewrites `/` → `/focus-web/index.html` (this
+works because the page is a single self-contained file). Keep Vercel's **Root
+Directory** at the default — do not point it at `focus-web`, or it will conflict
+with the rewrite. Pushing to `main` triggers an auto-deploy.
+
 ## Architecture notes
 
 **`focus-web/index.html` is intentionally a single self-contained file** — all CSS (`<style>`) and JS (`<script>`) are inlined, with zero external assets. This is deliberate: preview panels serve `index.html` from varying roots, so relative `style.css`/`app.js` links 404 and render the page unstyled. Do **not** re-split into separate `.css`/`.js` files. Earlier `focus-web/style.css` and `focus-web/app.js` were removed for this reason.
