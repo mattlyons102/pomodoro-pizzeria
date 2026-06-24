@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🍅 Pomodoro Pizzeria — Focus Timer</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍅</text></svg>" />
+  <style>
+    :root {
+      --tomato: #e23b34;
+      --tomato-dark: #b82b25;
+      --mozz: #fff7e8;
+      --cream: #ffeccd;
+      --basil: #4a9d3f;
+      --crust: #e0a23c;
+      --crust-dark: #b97c22;
+      --char: #3a2a1c;
+      --check-a: #e23b34;
+      --check-b: #f6e7d2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Trebuchet MS", "Comic Sans MS", system-ui, sans-serif;
+      color: var(--char);
+      background-color: var(--check-b);
+      background-image:
+        linear-gradient(45deg, var(--check-a) 25%, transparent 25%, transparent 75%, var(--check-a) 75%),
+        linear-gradient(45deg, var(--check-a) 25%, transparent 25%, transparent 75%, var(--check-a) 75%);
+      background-size: 56px 56px;
+      background-position: 0 0, 28px 28px;
+      padding: 24px;
+    }
+    .parlor {
+      width: min(440px, 100%);
+      background: var(--mozz);
+      border: 6px solid var(--char);
+      border-radius: 26px;
+      box-shadow: 0 14px 0 rgba(0,0,0,0.25), 0 22px 40px rgba(0,0,0,0.3);
+      padding: 22px 24px 26px;
+    }
+    .marquee {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: linear-gradient(180deg, var(--crust) 0%, var(--crust-dark) 100%);
+      border: 4px solid var(--char);
+      border-radius: 18px;
+      padding: 12px 16px;
+      margin-bottom: 18px;
+      box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18);
+    }
+    .mascot { width: 64px; height: 64px; flex: none; filter: drop-shadow(0 3px 0 rgba(0,0,0,0.25)); }
+    .titles h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      color: var(--mozz);
+      text-shadow: 2px 2px 0 var(--char);
+      letter-spacing: 0.5px;
+    }
+    .tagline { margin: 2px 0 0; color: #fff3df; font-size: 0.82rem; }
+    .counter { text-align: center; }
+    .phase-pill {
+      display: inline-block;
+      background: var(--basil);
+      color: #fff;
+      font-weight: bold;
+      padding: 6px 18px;
+      border-radius: 999px;
+      border: 3px solid var(--char);
+      box-shadow: 0 3px 0 rgba(0,0,0,0.25);
+      margin-bottom: 16px;
+      transition: background 0.3s;
+    }
+    .phase-pill.focus { background: var(--tomato); }
+    .phase-pill.break { background: var(--crust); color: var(--char); }
+    .phase-pill.longbreak { background: var(--tomato-dark); color: #fff; }
+    .oven { position: relative; width: 240px; height: 240px; margin: 0 auto 18px; }
+    .steam {
+      position: absolute; top: -6px; left: 0; right: 0; height: 90px;
+      pointer-events: none; z-index: 2; opacity: 0; transition: opacity 0.6s;
+    }
+    .steam.on { opacity: 1; }
+    .steam span {
+      position: absolute; bottom: 0; width: 16px; height: 16px;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.95), rgba(255,255,255,0));
+      border-radius: 50%; filter: blur(2px);
+      animation: rise 2.6s ease-in infinite;
+    }
+    .steam span:nth-child(1) { left: 34%; animation-delay: 0s;   }
+    .steam span:nth-child(2) { left: 44%; animation-delay: 0.5s; }
+    .steam span:nth-child(3) { left: 50%; animation-delay: 1.1s; }
+    .steam span:nth-child(4) { left: 56%; animation-delay: 0.8s; }
+    .steam span:nth-child(5) { left: 64%; animation-delay: 1.6s; }
+    @keyframes rise {
+      0%   { transform: translateY(0) scale(0.6); opacity: 0; }
+      20%  { opacity: 0.85; }
+      60%  { opacity: 0.5; }
+      100% { transform: translateY(-78px) scale(1.5) translateX(8px); opacity: 0; }
+    }
+    .ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .ring-track { fill: none; stroke: var(--cream); stroke-width: 20; }
+    .ring-progress {
+      fill: none; stroke: var(--tomato); stroke-width: 20; stroke-linecap: round;
+      stroke-dasharray: 653.45; stroke-dashoffset: 0;
+      transition: stroke-dashoffset 0.3s linear, stroke 0.3s;
+      filter: drop-shadow(0 0 6px rgba(226,59,52,0.4));
+    }
+    .ring-progress.break { stroke: var(--crust); }
+    .ring-progress.longbreak { stroke: var(--tomato-dark); }
+    .oven-center {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .time {
+      font-size: 3.1rem; font-weight: bold; color: var(--char);
+      font-variant-numeric: tabular-nums; text-shadow: 2px 2px 0 var(--cream);
+    }
+    .round-note { font-size: 0.95rem; color: var(--tomato-dark); font-weight: bold; }
+    .controls { display: flex; gap: 12px; justify-content: center; margin-bottom: 16px; }
+    .btn {
+      font-family: inherit; font-size: 1.05rem; font-weight: bold; padding: 11px 22px;
+      border: 3px solid var(--char); border-radius: 14px; cursor: pointer;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.3); transition: transform 0.06s, box-shadow 0.06s;
+    }
+    .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+    .btn-primary { background: var(--tomato); color: #fff; }
+    .btn-ghost { background: var(--cream); color: var(--char); }
+    .settings { display: flex; gap: 12px; justify-content: center; margin-bottom: 6px; flex-wrap: wrap; }
+    .settings label {
+      display: flex; flex-direction: column; font-size: 0.68rem; font-weight: bold;
+      color: var(--tomato-dark); gap: 4px; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .settings input {
+      width: 78px; font-family: inherit; font-size: 1rem; text-align: center;
+      padding: 7px; border: 3px solid var(--char); border-radius: 10px; background: #fff;
+    }
+    .settings input:disabled { opacity: 0.5; }
+    .receipt {
+      display: flex; justify-content: space-around; margin-top: 22px; padding-top: 16px;
+      border-top: 3px dashed var(--crust-dark);
+    }
+    .stat { display: flex; flex-direction: column; align-items: center; }
+    .stat-num { font-size: 1.7rem; font-weight: bold; color: var(--tomato); }
+    .stat-label { font-size: 0.78rem; color: var(--char); }
+    .help-bar { text-align: center; margin-top: 16px; }
+    .help-toggle {
+      font-family: inherit; font-size: 0.82rem; font-weight: bold; cursor: pointer;
+      background: var(--cream); color: var(--tomato-dark);
+      border: 3px solid var(--char); border-radius: 999px; padding: 6px 16px;
+      box-shadow: 0 3px 0 rgba(0,0,0,0.25); transition: transform 0.06s, box-shadow 0.06s;
+    }
+    .help-toggle:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.25); }
+    .help-q {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid var(--tomato-dark); color: var(--tomato-dark);
+      font-size: 0.7rem; font-weight: bold; line-height: 1; margin-right: 3px;
+    }
+    .help-panel {
+      overflow: hidden; max-height: 0; opacity: 0;
+      transition: max-height 0.35s ease, opacity 0.35s ease, margin-top 0.35s ease;
+      margin-top: 0; text-align: left;
+    }
+    .help-panel.open { max-height: 360px; opacity: 1; margin-top: 12px; }
+    .help-card {
+      background: var(--cream); border: 3px solid var(--char); border-radius: 14px;
+      padding: 12px 16px; font-size: 0.86rem; line-height: 1.5; color: var(--char);
+    }
+    .help-card h2 { margin: 0 0 6px; font-size: 0.98rem; color: var(--tomato-dark); }
+    .help-card ul { margin: 6px 0 0; padding-left: 18px; }
+    .help-card li { margin-bottom: 4px; }
+    @keyframes wiggle {
+      0%,100% { transform: rotate(0deg); }
+      25% { transform: rotate(-9deg); }
+      75% { transform: rotate(9deg); }
+    }
+    .mascot.cheer { animation: wiggle 0.5s ease-in-out 2; }
+  </style>
+</head>
+<body>
+  <div class="parlor">
+    <header class="marquee">
+      <svg class="mascot" viewBox="0 0 120 120" aria-label="Pomodoro tomato mascot, rubber-hose cartoon style">
+        <!-- rubber-hose noodle arms (behind body) -->
+        <g fill="none" stroke="#2a2a2a" stroke-width="7" stroke-linecap="round">
+          <path d="M30 74 Q12 70 10 50"/>
+          <path d="M90 76 Q108 82 104 100"/>
+        </g>
+        <g fill="none" stroke="#c9302c" stroke-width="4" stroke-linecap="round">
+          <path d="M30 74 Q12 70 10 50"/>
+          <path d="M90 76 Q108 82 104 100"/>
+        </g>
+        <!-- white-glove hands -->
+        <circle cx="9" cy="46" r="8" fill="#fff" stroke="#2a2a2a" stroke-width="2.5"/>
+        <circle cx="105" cy="103" r="8" fill="#fff" stroke="#2a2a2a" stroke-width="2.5"/>
+        <!-- leafy cap -->
+        <g class="leaves">
+          <path d="M60 26 C54 12 44 10 40 18 C50 16 54 22 56 30 Z" fill="#4a9d3f"/>
+          <path d="M60 26 C66 12 76 10 80 18 C70 16 66 22 64 30 Z" fill="#5cb84e"/>
+          <path d="M60 24 C58 14 60 8 66 8 C64 16 64 22 62 28 Z" fill="#69c95a"/>
+        </g>
+        <rect x="56" y="24" width="8" height="12" rx="4" fill="#6b4a2a"/>
+        <!-- tomato body with bold cartoon outline -->
+        <ellipse cx="60" cy="68" rx="40" ry="36" fill="#e23b34" stroke="#2a2a2a" stroke-width="3"/>
+        <ellipse cx="60" cy="68" rx="40" ry="36" fill="url(#shine)"/>
+        <!-- pie-cut eyes (rubber-hose hallmark) -->
+        <g>
+          <circle cx="48" cy="60" r="9" fill="#2a2a2a"/>
+          <circle cx="72" cy="60" r="9" fill="#2a2a2a"/>
+          <polygon points="48,60 48,69 56,63.5" fill="#fff"/>
+          <polygon points="72,60 72,69 64,63.5" fill="#fff"/>
+        </g>
+        <!-- big open rubber-hose smile with tongue -->
+        <path d="M42 74 Q60 96 78 74 Q60 84 42 74 Z" fill="#2a2a2a"/>
+        <path d="M51 82 Q60 90 69 82 Q60 86 51 82 Z" fill="#ef6b86"/>
+        <!-- rosy cheeks -->
+        <circle cx="36" cy="73" r="5" fill="#f58aa0" opacity="0.75"/>
+        <circle cx="84" cy="73" r="5" fill="#f58aa0" opacity="0.75"/>
+        <defs>
+          <radialGradient id="shine" cx="38%" cy="30%" r="60%">
+            <stop offset="0%" stop-color="#fff" stop-opacity="0.5"/>
+            <stop offset="45%" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+      </svg>
+      <div class="titles">
+        <h1>Pomodoro Pizzeria</h1>
+        <p class="tagline">Fresh focus, baked to order 🍕</p>
+      </div>
+    </header>
+
+    <main class="counter">
+      <div class="phase-pill" id="phasePill">Ready to bake</div>
+
+      <div class="oven">
+        <div class="steam" id="steam" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <svg class="ring" viewBox="0 0 240 240">
+          <circle class="ring-track" cx="120" cy="120" r="104" />
+          <circle class="ring-progress" id="ringProgress" cx="120" cy="120" r="104" />
+        </svg>
+        <div class="oven-center">
+          <div class="time" id="timeDisplay">25:00</div>
+          <div class="round-note" id="roundNote">Round 1</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="startPauseBtn" class="btn btn-primary">▶ Start</button>
+        <button id="resetBtn" class="btn btn-ghost">↺ Reset</button>
+      </div>
+
+      <div class="settings">
+        <label>Bake min
+          <input type="number" id="focusInput" value="25" min="0.1" step="0.1" />
+        </label>
+        <label>Cool min
+          <input type="number" id="breakInput" value="5" min="0.1" step="0.1" />
+        </label>
+        <label>Long rest min
+          <input type="number" id="longBreakInput" value="15" min="0.1" step="0.1" />
+        </label>
+      </div>
+    </main>
+
+    <footer class="receipt">
+      <div class="stat">
+        <span class="stat-num" id="roundsDone">0</span>
+        <span class="stat-label">🍕 Pizzas baked</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="focusTotal">0m</span>
+        <span class="stat-label">⏱ Time focused</span>
+      </div>
+    </footer>
+
+    <div class="help-bar">
+      <button id="helpToggle" class="help-toggle" aria-expanded="false" aria-controls="helpPanel"><span class="help-q">?</span> How to Use</button>
+    </div>
+    <div class="help-panel" id="helpPanel">
+      <div class="help-card">
+        <h2>🍅 How the timer works</h2>
+        <p>Work in focused "bakes," then take a short "cool" break — repeat to stay fresh.</p>
+        <ul>
+          <li><b>Start / Pause</b> begins or holds the current timer; <b>Reset</b> clears everything back to Round 1.</li>
+          <li>It auto-flips: a focus <b>bake</b> → a <b>cool</b> break → the next bake, dinging at each switch.</li>
+          <li>Every <b>4th pizza</b> earns a longer <b>Wood-fired rest 🔥</b> instead of a short break.</li>
+          <li>Tweak <b>Bake / Cool / Long rest</b> minutes (while paused) to set your own rhythm.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // 🍅 Pomodoro Pizzeria — focus timer logic
+  const RING_CIRCUMFERENCE = 2 * Math.PI * 104;
+  const LONG_BREAK_EVERY = 4; // a wood-fired long rest after every 4 pizzas
+
+  const els = {
+    phasePill: document.getElementById("phasePill"),
+    ring: document.getElementById("ringProgress"),
+    time: document.getElementById("timeDisplay"),
+    roundNote: document.getElementById("roundNote"),
+    startPause: document.getElementById("startPauseBtn"),
+    reset: document.getElementById("resetBtn"),
+    focusInput: document.getElementById("focusInput"),
+    breakInput: document.getElementById("breakInput"),
+    longBreakInput: document.getElementById("longBreakInput"),
+    roundsDone: document.getElementById("roundsDone"),
+    focusTotal: document.getElementById("focusTotal"),
+    mascot: document.querySelector(".mascot"),
+    steam: document.getElementById("steam"),
+  };
+
+  const state = {
+    phase: "focus",        // "focus" | "break" | "longbreak"
+    running: false,
+    totalSec: 25 * 60,
+    remainingSec: 25 * 60,
+    round: 1,
+    roundsCompleted: 0,
+    focusMinutes: 0,
+    ticker: null,
+    endsAt: 0,
+  };
+
+  const COPY = {
+    focus:     { label: "Baking 🍕",            pill: "focus" },
+    break:     { label: "Cooling on the rack",  pill: "break" },
+    longbreak: { label: "Wood-fired rest 🔥",   pill: "longbreak" },
+    idle:      { label: "Ready to bake" },
+  };
+
+  function focusLen()     { return Math.max(0.1, parseFloat(els.focusInput.value) || 25) * 60; }
+  function breakLen()     { return Math.max(0.1, parseFloat(els.breakInput.value) || 5) * 60; }
+  function longBreakLen() { return Math.max(0.1, parseFloat(els.longBreakInput.value) || 15) * 60; }
+
+  function fmtClock(sec) {
+    sec = Math.max(0, Math.ceil(sec));
+    const m = Math.floor(sec / 60), s = sec % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  function fmtMinutes(totalMin) {
+    const rounded = Math.round(totalMin);
+    const h = Math.floor(rounded / 60), m = rounded % 60;
+    return h ? `${h}h ${m}m` : `${m}m`;
+  }
+
+  function ding() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = ctx.currentTime;
+      [880, 1320].forEach((freq, i) => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = "triangle"; osc.frequency.value = freq;
+        const t = now + i * 0.16;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.3, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t); osc.stop(t + 0.42);
+      });
+      setTimeout(() => ctx.close(), 900);
+    } catch (e) {}
+  }
+
+  function cheer() {
+    els.mascot.classList.remove("cheer");
+    void els.mascot.offsetWidth;
+    els.mascot.classList.add("cheer");
+  }
+
+  function isActive() { return state.running || state.remainingSec < state.totalSec; }
+
+  function render() {
+    els.time.textContent = fmtClock(state.remainingSec);
+    const frac = state.totalSec ? state.remainingSec / state.totalSec : 0;
+    els.ring.style.strokeDashoffset = String(RING_CIRCUMFERENCE * (1 - frac));
+
+    const pillClass = COPY[state.phase].pill;
+    els.ring.classList.remove("break", "longbreak");
+    if (pillClass !== "focus") els.ring.classList.add(pillClass);
+
+    els.phasePill.textContent = isActive() ? COPY[state.phase].label : COPY.idle.label;
+    els.phasePill.className = "phase-pill" + (isActive() ? " " + pillClass : "");
+
+    els.steam.classList.toggle("on", state.running);
+
+    const noteByPhase = {
+      focus: `Round ${state.round}`,
+      break: "Break time",
+      longbreak: "Long rest 🔥",
+    };
+    els.roundNote.textContent = noteByPhase[state.phase];
+    els.roundsDone.textContent = String(state.roundsCompleted);
+    els.focusTotal.textContent = fmtMinutes(state.focusMinutes);
+  }
+
+  function tick() {
+    state.remainingSec = (state.endsAt - Date.now()) / 1000;
+    if (state.remainingSec <= 0) {
+      state.remainingSec = 0; render(); completePhase(); return;
+    }
+    render();
+  }
+
+  function startTicker() {
+    state.endsAt = Date.now() + state.remainingSec * 1000;
+    clearInterval(state.ticker);
+    state.ticker = setInterval(tick, 200);
+  }
+
+  function completePhase() {
+    clearInterval(state.ticker);
+    ding(); cheer();
+
+    if (state.phase === "focus") {
+      state.roundsCompleted += 1;
+      state.focusMinutes += state.totalSec / 60;
+      // long rest after every Nth pizza, otherwise a normal break
+      if (state.roundsCompleted % LONG_BREAK_EVERY === 0) {
+        state.phase = "longbreak";
+        state.totalSec = longBreakLen();
+      } else {
+        state.phase = "break";
+        state.totalSec = breakLen();
+      }
+      state.remainingSec = state.totalSec;
+    } else {
+      // any break over -> next focus round
+      state.phase = "focus";
+      state.round += 1;
+      state.totalSec = focusLen();
+      state.remainingSec = state.totalSec;
+    }
+    startTicker();
+    render();
+  }
+
+  function start() {
+    if (state.running) return;
+    if (state.phase === "focus" && state.remainingSec === state.totalSec && !state.ticker) {
+      state.totalSec = focusLen();
+      state.remainingSec = state.totalSec;
+    }
+    state.running = true;
+    els.startPause.textContent = "⏸ Pause";
+    setInputsDisabled(true);
+    startTicker();
+    render();
+  }
+
+  function pause() {
+    if (!state.running) return;
+    state.running = false;
+    state.remainingSec = Math.max(0, (state.endsAt - Date.now()) / 1000);
+    clearInterval(state.ticker);
+    state.ticker = null;
+    els.startPause.textContent = "▶ Resume";
+    setInputsDisabled(false);
+    render();
+  }
+
+  function reset() {
+    state.running = false;
+    clearInterval(state.ticker);
+    state.ticker = null;
+    state.phase = "focus";
+    state.round = 1;
+    state.roundsCompleted = 0;
+    state.focusMinutes = 0;
+    state.totalSec = focusLen();
+    state.remainingSec = state.totalSec;
+    els.startPause.textContent = "▶ Start";
+    setInputsDisabled(false);
+    render();
+  }
+
+  function setInputsDisabled(disabled) {
+    els.focusInput.disabled = disabled;
+    els.breakInput.disabled = disabled;
+    els.longBreakInput.disabled = disabled;
+  }
+
+  els.startPause.addEventListener("click", () => state.running ? pause() : start());
+  els.reset.addEventListener("click", reset);
+  els.focusInput.addEventListener("change", () => {
+    if (!state.running && state.phase === "focus" && !state.ticker) {
+      state.totalSec = focusLen();
+      state.remainingSec = state.totalSec;
+      render();
+    }
+  });
+
+  // How-to-use collapsible panel
+  const helpToggle = document.getElementById("helpToggle");
+  const helpPanel = document.getElementById("helpPanel");
+  helpToggle.addEventListener("click", () => {
+    const open = helpPanel.classList.toggle("open");
+    helpToggle.setAttribute("aria-expanded", String(open));
+    helpToggle.innerHTML = open ? "✕ Hide" : '<span class="help-q">?</span> How to Use';
+  });
+
+  els.ring.style.strokeDasharray = String(RING_CIRCUMFERENCE);
+  reset();
+  </script>
+</body>
+</html>
