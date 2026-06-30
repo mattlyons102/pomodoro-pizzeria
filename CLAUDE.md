@@ -11,10 +11,6 @@ Two independent, zero-dependency implementations of the same Pomodoro focus time
 
 They share no code; `focus-web` is a re-skinned port of the logic in `focus-timer/focus_timer.py`. When changing timer behavior (phase model, defaults, bell), keep the two in sync deliberately — there is no shared module.
 
-A third, unrelated app also lives here:
-
-- **`jp-pricing/`** — the "JP Pricing Tool", a single-file browser app themed as a realistic Japanese bamboo forest. It uploads Japanese MHLW drug-price publication PDFs, sends each to Claude (`claude-opus-4-8`) **directly from the browser**, and renders an English-translated summary table of pricing details (pricing method, premiums/補正加算, foreign price adjustment, PMP eligibility, etc.) with expandable per-drug detail and an Excel (`.xlsx`) export. It shares no code with the timers.
-
 ## Running
 
 Terminal version:
@@ -29,24 +25,16 @@ python3 -m http.server 5501 --directory focus-web
 ```
 Prefer the preview tooling (`preview_start` with the `focus-web` config) over launching the server manually.
 
-JP Pricing Tool — also static, configured in `.claude/launch.json` (name `jp-pricing`, port **5502**):
-```bash
-python3 -m http.server 5502 --directory jp-pricing
-```
-
 There is no build step, no package manager, and no test suite.
 
 ## Deployment
 
 The repo is on GitHub (`mattlyons102/pomodoro-pizzeria`, public) and deploys to
-Vercel as a static site. Because the apps live in subfolders rather than the repo
-root, the root `vercel.json` has two rewrites: `/` → `/focus-web/index.html` and
-`/jp-pricing` → `/jp-pricing/index.html` (each works because the page is a single
-self-contained file). Keep Vercel's **Root Directory** at the default — do not
-point it at a subfolder, or it will conflict with the rewrites. Pushing to `main`
-triggers an auto-deploy. The JP Pricing Tool is therefore reachable at
-`<deployment>/jp-pricing`; each visitor supplies their own Anthropic API key
-(stored in their own browser), so no key is ever committed.
+Vercel as a static site. Because the app lives in `focus-web/` rather than the
+repo root, the root `vercel.json` rewrites `/` → `/focus-web/index.html` (this
+works because the page is a single self-contained file). Keep Vercel's **Root
+Directory** at the default — do not point it at `focus-web`, or it will conflict
+with the rewrite. Pushing to `main` triggers an auto-deploy.
 
 ## Architecture notes
 
@@ -56,10 +44,6 @@ triggers an auto-deploy. The JP Pricing Tool is therefore reachable at
 
 **Web timing** is wall-clock based: `completePhase()`/`tick()` compute remaining time from `endsAt` (a `Date.now()` target), not by decrementing a counter — so it stays accurate even if interval callbacks are throttled. The tomato mascot and steam are pure inline SVG/CSS.
 
-**`jp-pricing/index.html`** follows the same single-self-contained-file rule, with **one deliberate exception**: SheetJS for `.xlsx` export is loaded from an absolute CDN URL. An absolute URL is immune to the relative-path 404 problem (which is why inlining everything else still matters), and the page degrades gracefully if the CDN is blocked (only export is affected). The page calls the Anthropic Messages API directly via `fetch` with the `anthropic-dangerous-direct-browser-access: true` header; PDFs go up as base64 `document` blocks and extraction uses `output_config.format` (structured JSON output), so there is no separate OCR/pdf.js layer. The bamboo forest, komorebi light shafts, and dust motes are pure CSS plus a JS-drawn inline `<svg>`. The API key lives only in `localStorage` (`jp_pricing_api_key`). The "Load sample row" button seeds a demo drug so the table, expandable detail, and Excel export can be exercised without an API key.
-
 ## Verifying changes
 
 Changes to `focus-web` are visual; verify by reloading the preview and screenshotting. To exercise the every-4 long-break rule without waiting, the timer functions (`reset`, `completePhase`, `state`) are global in the page, so you can fast-forward via `preview_eval`. The bottom "How to Use" button toggles a collapsible instructions card.
-
-For `jp-pricing`, use the "Load sample row" button (or `els.sampleBtn.click()` via `preview_eval`) to populate results without a key, then verify the table, the expandable drop-down detail, and the `.xlsx` export. Real extraction needs a valid Anthropic API key and a real MHLW PDF.
