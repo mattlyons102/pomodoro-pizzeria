@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "5501", "--directory", "focus-web"],
       "port": 5501
+    },
+    {
+      "name": "jp-pricing",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "5502", "--directory", "jp-pricing"],
+      "port": 5502
     }
   ]
 }
